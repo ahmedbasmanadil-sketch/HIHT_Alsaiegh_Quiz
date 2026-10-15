@@ -1325,7 +1325,7 @@ def history_section(df, rows, kp):
     for tab, lec in zip(st.tabs(lectures), lectures):
         with tab:
             lsel = sel[sel["Lecture"] == lec]
-          lecture_panel(lsel, qmap, f"{kp}_{subj}_{lec}", peer_l.get((subj, lec)), subj=subj, lec=lec)
+            lecture_panel(lsel, qmap, f"{kp}_{subj}_{lec}", peer_l.get((subj, lec)), subj=subj, lec=lec)
 
 # ====================== حسابي ======================
 def avatar_html(row, name, size=64):
