@@ -1160,7 +1160,7 @@ def ai_analyze_lecture(user_name, subject, lecture, attempts_df, wrong_texts):
     """توليد تقرير AI عبر Gemini بناءً على محاولات متعددة."""
     try:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        model = genai.GenerativeModel('gemini-3.0-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
 
         attempts_lines = []
         for i, (_, row) in enumerate(attempts_df.iterrows(), 1):
