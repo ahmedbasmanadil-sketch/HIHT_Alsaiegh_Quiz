@@ -1062,7 +1062,7 @@ def quiz_view(df):
     # qid non-unique. Keep a safe mapping instead of crashing the admin history.
     qmap = df.drop_duplicates(subset=["qid"], keep="last").set_index("qid").to_dict("index")
     c_back, c_title = st.columns([1, 4])
-    with c_back:
+with c_back:
     if st.button("↩️ إلغاء", use_container_width=True):
         if user.get("account"):
             try:
@@ -1072,12 +1072,13 @@ def quiz_view(df):
         st.session_state.quiz = None
         st.session_state.quiz_answers = {}
         go("subject")
-    with c_title:
+with c_title:
     st.subheader(f"{quiz['subject']} — {quiz['lecture']}")
-    st.caption(f"{len(quiz['ids'])} سؤال · إجاباتك تبقى محفوظة أثناء التنقل داخل الاختبار؛ اضغط إنهاء عند الاكتمال.")
-    answers_state = st.session_state.setdefault("quiz_answers", {})
-    for i, qid in enumerate(quiz["ids"], 1):
-        row = qmap[qid]
+
+st.caption(f"{len(quiz['ids'])} سؤال · إجاباتك تبقى محفوظة أثناء التنقل داخل الاختبار؛ اضغط إنهاء عند الاكتمال.")
+answers_state = st.session_state.setdefault("quiz_answers", {})
+for i, qid in enumerate(quiz["ids"], 1):
+    row = qmap[qid]
         with box():
             st.markdown(f'<div class="ltr"><b>{i}. {esc(row["Question"])}</b></div>', unsafe_allow_html=True)
             letters = [L for L in LETTERS if str(row.get(f"Option{L}", "")).strip()]
