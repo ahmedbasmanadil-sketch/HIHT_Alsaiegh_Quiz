@@ -229,7 +229,7 @@ def gate():
     t_guest, t_login, t_reg = st.tabs(["ضيف", "تسجيل الدخول", "حساب جديد"])
 
     with t_guest:
-        st.caption("تصل نتيجتك للمشرف، لكن لا يُحفظ لك سجل.")
+        st.caption("لا يُحفظ لك سجل.")
         name = st.text_input("اسمك", key="guest_name")
         if st.button("ابدأ كضيف", type="primary", use_container_width=True):
             if name.strip():
@@ -255,7 +255,7 @@ def gate():
 
     with t_reg:
         st.caption("الحساب يحفظ سجل اختباراتك ويحلل نقاط ضعفك.")
-        u = st.text_input("اسم المستخدم (يفضل اسمك الحقيقي)", key="reg_u")
+        u = st.text_input("اسم المستخدم", key="reg_u")
         p = st.text_input("كلمة المرور (4 أحرف فأكثر)", type="password", key="reg_p")
         if st.button("إنشاء الحساب", type="primary", use_container_width=True):
             if not u.strip() or len(p) < 4:
