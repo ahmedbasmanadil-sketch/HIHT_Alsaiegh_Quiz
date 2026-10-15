@@ -1058,27 +1058,26 @@ def quiz_view(df):
     quiz = st.session_state.get("quiz")
     if not quiz:
         go("home")
-    # Older sheets can contain repeated question text, which historically made
-    # qid non-unique. Keep a safe mapping instead of crashing the admin history.
     qmap = df.drop_duplicates(subset=["qid"], keep="last").set_index("qid").to_dict("index")
-    c_back, c_title = st.columns([1, 4])
-with c_back:
-    if st.button("↩️ إلغاء", use_container_width=True):
-        if user.get("account"):
-            try:
-                delete_draft(user["name"])
-            except Exception:
-                pass
-        st.session_state.quiz = None
-        st.session_state.quiz_answers = {}
-        go("subject")
-with c_title:
-    st.subheader(f"{quiz['subject']} — {quiz['lecture']}")
 
-st.caption(f"{len(quiz['ids'])} سؤال · إجاباتك تبقى محفوظة أثناء التنقل داخل الاختبار؛ اضغط إنهاء عند الاكتمال.")
-answers_state = st.session_state.setdefault("quiz_answers", {})
-for i, qid in enumerate(quiz["ids"], 1):
-    row = qmap[qid]
+    c_back, c_title = st.columns([1, 4])
+    with c_back:
+        if st.button("↩️ إلغاء", use_container_width=True):
+            if user.get("account"):
+                try:
+                    delete_draft(user["name"])
+                except Exception:
+                    pass
+            st.session_state.quiz = None
+            st.session_state.quiz_answers = {}
+            go("subject")
+    with c_title:
+        st.subheader(f"{quiz['subject']} — {quiz['lecture']}")
+
+    st.caption(f"{len(quiz['ids'])} سؤال · إجاباتك تبقى محفوظة أثناء التنقل داخل الاختبار؛ اضغط إنهاء عند الاكتمال.")
+    answers_state = st.session_state.setdefault("quiz_answers", {})
+    for i, qid in enumerate(quiz["ids"], 1):
+        row = qmap[qid]
         with box():
             st.markdown(f'<div class="ltr"><b>{i}. {esc(row["Question"])}</b></div>', unsafe_allow_html=True)
             letters = [L for L in LETTERS if str(row.get(f"Option{L}", "")).strip()]
@@ -1117,10 +1116,7 @@ for i, qid in enumerate(quiz["ids"], 1):
         except Exception:
             saved = False
         go("result", result={"score": score, "total": total,
-             "pct": round(score / total * 100, 1), "review": review, "saved": saved}, quiz=None, quiz_answers={})
-
-
-# ====================== النتيجة ======================
+             "pct": round(score / total * 100, 1), "review": review, "saved": saved}, quiz=None, quiz_answers={})# ====================== النتيجة ======================
 def result_view():
     res = st.session_state.get("result")
     if not res:
