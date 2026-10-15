@@ -1274,7 +1274,7 @@ def lecture_panel(lsel, qmap, kp, peer, subj="", lec=""):
             st.markdown(st.session_state[report_key])
             if st.button("🗑️ حذف التقرير", key=f"del_ai_{kp}", use_container_width=True):
                        del st.session_state[report_key]
-                st.rerun()
+        st.rerun()
     else:
         remaining = 3 - len(lsel)
         st.info(f"💡 يحتاج التحليل إلى 3 محاولات على الأقل. تحتاج {remaining} محاولة إضافية.")
