@@ -1,0 +1,6 @@
+streamlit>=1.40
+gspread>=6.0
+google-auth>=2.20
+pandas>=2.0
+Pillow>=10.0
+extra-streamlit-components>=0.1.71
