@@ -1217,7 +1217,7 @@ def lecture_panel(lsel, qmap, kp, peer, subj="", lec=""):
             if chosen != correct:
                 wrong[qid] += 1
     weak = [(q, w) for q, w in wrong.most_common(10) if q in qmap]
-    st.markdown("**🎯 أكثر الأسئلة خطأً في هذه المحاضرة**")
+    st.markdown("🎯 أكثر الأسئلة خطأً في هذه المحاضرة")
     if weak:
         for qid, w in weak:
             r = qmap[qid]
@@ -1226,57 +1226,58 @@ def lecture_panel(lsel, qmap, kp, peer, subj="", lec=""):
                 st.markdown(
                     f'<div class="ltr">✅ {r["Correct"]}) {esc(r["Option" + r["Correct"]])}</div>',
                     unsafe_allow_html=True)
-                       st.divider()
-st.subheader("🤖 التحليل الذكي (AI)")
-if len(lsel) >= 3:
-    st.caption(f"سيقوم Gemini بتحليل أدائك خلال {len(lsel)} محاولات.")
-    report_key = f"ai_report_{kp}"
-    if st.button("📊 توليد التقرير", type="primary", use_container_width=True, key=f"ai_btn_{kp}"):
-        with st.spinner("جاري التحليل عبر Gemini..."):
-            user_name = st.session_state.user["name"]
-            wrong_texts = [f"- {qmap[qid]['Question']} (أخطأ {w} مرة)" 
-                           for qid, w in weak[:10] if qid in qmap]
-            report = ai_analyze_lecture(user_name, subj, lec, lsel, wrong_texts)
-            st.session_state[report_key] = report
-    if st.session_state.get(report_key):
-        st.markdown(st.session_state[report_key])
-        if st.button("🗑️ حذف التقرير", key=f"del_ai_{kp}", use_container_width=True):
-            del st.session_state[report_key]
-            st.rerun()
-else:
-    remaining = 3 - len(lsel)
-    st.info(f"💡 يحتاج التحليل إلى 3 محاولات على الأقل. تحتاج {remaining} محاولة إضافية.")
     else:
         st.success("لا أخطاء مسجلة، ممتاز!")
 
-    st.markdown("**🔍 مراجعة اختبار سابق**")
+    st.markdown("🔍 مراجعة اختبار سابق")
     recs = lsel.to_dict("records")
     labels = [f"{r['Timestamp']} — {r['Score']}/{r['Total']}" for r in recs]
     choice = st.selectbox("اختر اختبارًا لعرض تفاصيله", ["— اختر اختبارًا —"] + list(range(len(recs))),
                           format_func=lambda i: i if isinstance(i, str) else labels[i],
                           index=0, key=f"{kp}_rev")
-    if not isinstance(choice, int):
+    if isinstance(choice, int):
+        try:
+            ans = json.loads(recs[choice]["Answers"])
+        except Exception:
+            st.warning("لا توجد تفاصيل لهذا الاختبار.")
+            ans = None
+        if ans:
+            qorder = {qid: i for i, qid in enumerate(qmap.keys())}
+            ordered_answers = sorted(ans.items(), key=lambda item: qorder.get(item[0], 10**9))
+            for n, (qid, (chosen, correct)) in enumerate(ordered_answers, 1):
+                if qid not in qmap:
+                    continue
+                r = qmap[qid]
+                with st.expander(f"{'✅' if chosen == correct else '❌'} {n}. {r['Question'][:55]}"):
+                    st.markdown(f'<div class="ltr">{esc(r["Question"])}</div>', unsafe_allow_html=True)
+                    if chosen != correct:
+                        ct = f"{chosen}) {r['Option' + chosen]}" if chosen else "بدون إجابة"
+                        st.markdown(f'<div class="ltr">❌ إجابتك: {esc(ct)}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="ltr">✅ {correct}) {esc(r["Option" + correct])}</div>',
+                                unsafe_allow_html=True)
+    else:
         st.caption("لن تظهر تفاصيل أي اختبار حتى تختار اختبارًا من القائمة.")
-        return
-    try:
-        ans = json.loads(recs[choice]["Answers"])
-    except Exception:
-        st.warning("لا توجد تفاصيل لهذا الاختبار.")
-        return
-    qorder = {qid: i for i, qid in enumerate(qmap.keys())}
-    ordered_answers = sorted(ans.items(), key=lambda item: qorder.get(item[0], 10**9))
-    for n, (qid, (chosen, correct)) in enumerate(ordered_answers, 1):
-        if qid not in qmap:
-            continue
-        r = qmap[qid]
-        with st.expander(f"{'✅' if chosen == correct else '❌'} {n}. {r['Question'][:55]}"):
-            st.markdown(f'<div class="ltr">{esc(r["Question"])}</div>', unsafe_allow_html=True)
-            if chosen != correct:
-                ct = f"{chosen}) {r['Option' + chosen]}" if chosen else "بدون إجابة"
-                st.markdown(f'<div class="ltr">❌ إجابتك: {esc(ct)}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="ltr">✅ {correct}) {esc(r["Option" + correct])}</div>',
-                        unsafe_allow_html=True)
 
+    st.divider()
+    st.subheader("🤖 التحليل الذكي (AI)")
+    if len(lsel) >= 3:
+        st.caption(f"سيقوم Gemini بتحليل أدائك خلال {len(lsel)} محاولات.")
+        report_key = f"ai_report_{kp}"
+        if st.button("📊 توليد التقرير", type="primary", use_container_width=True, key=f"ai_btn_{kp}"):
+            with st.spinner("جاري التحليل عبر Gemini..."):
+                user_name = st.session_state.user["name"]
+                wrong_texts = [f"- {qmap[qid]['Question']} (أخطأ {w} مرة)"
+                               for qid, w in weak[:10] if qid in qmap]
+                report = ai_analyze_lecture(user_name, subj, lec, lsel, wrong_texts)
+                st.session_state[report_key] = report
+        if st.session_state.get(report_key):
+            st.markdown(st.session_state[report_key])
+            if st.button("🗑️ حذف التقرير", key=f"del_ai_{kp}", use_container_width=True):
+                       del st.session_state[report_key]
+                st.rerun()
+    else:
+        remaining = 3 - len(lsel)
+        st.info(f"💡 يحتاج التحليل إلى 3 محاولات على الأقل. تحتاج {remaining} محاولة إضافية.")
 
 def history_section(df, rows, kp):
     if not rows:
