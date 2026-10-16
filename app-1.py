@@ -1344,8 +1344,6 @@ def groq_generate(system_prompt, user_text):
     # 5. openai/gpt-oss-120b: نموذج عام ضخم، دعم عربي مقبول
     models_to_try = [
     "llama-3.3-70b-versatile",
-    "mistral-saba-24b",
-    "qwen/qwen3-32b",
 ]
 
     from groq import Groq
