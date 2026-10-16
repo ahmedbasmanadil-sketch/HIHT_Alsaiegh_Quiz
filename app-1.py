@@ -1233,12 +1233,20 @@ def parse_answers(raw):
 def _safe_pct(v):
     if v is None:
         return 0.0
-    s = str(v).strip().replace("%", "").replace(",", ".").replace(" ", "")
+    s = str(v).strip()
+    arabic_digits = "٠١٢٣٤٥٦٧٨٩"
+    for i, d in enumerate(arabic_digits):
+        s = s.replace(d, str(i))
+    s = (s.replace("٫", ".")
+           .replace("٬", "")
+           .replace("،", "")
+           .replace("%", "")
+           .replace(",", ".")
+           .replace(" ", ""))
     try:
         return float(s)
     except (ValueError, TypeError):
         return 0.0
-
 
 def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     sel = sel.sort_values("Timestamp").reset_index(drop=True)
