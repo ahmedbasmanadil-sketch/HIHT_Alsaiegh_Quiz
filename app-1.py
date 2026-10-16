@@ -1346,7 +1346,6 @@ def groq_generate(system_prompt, user_text):
     "llama-3.3-70b-versatile",
     "mistral-saba-24b",
     "qwen/qwen3-32b",
-    "allam-2-7b",
 ]
 
     from groq import Groq
