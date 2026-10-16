@@ -1341,7 +1341,13 @@ def account_view(df):
     name = user["name"]
     urow = user_row(name)
     rows = my_rows(name)
-    pcts = [float(r["Percentage"] or 0) for r in rows]
+   pcts = []
+for r in rows:
+    try:
+        v = float(r.get("Percentage") or 0)
+    except (ValueError, TypeError):
+        v = 0
+    pcts.append(v)
     since = str(urow.get("Created", ""))[:10]
     with box():
         st.markdown(
