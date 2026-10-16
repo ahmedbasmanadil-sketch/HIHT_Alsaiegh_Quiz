@@ -1393,85 +1393,10 @@ def gemini_generate(system_prompt, user_text):
     raise last_err or RuntimeError("لا يوجد نموذج متاح")
 
 
-def ai_view(df, rows, kp):
-    if not rows:
-        st.info("لا توجد اختبارات بعد. أجرِ اختبارًا واحدًا على الأقل ثم عُد؛ التحليل ممكن من أول اختبار.")
-        return
-    qmap = df.drop_duplicates(subset=["qid"], keep="last").set_index("qid").to_dict("index")
-    rdf = pd.DataFrame(rows)
-for c in ("Score", "Total"):
-    rdf[c] = pd.to_numeric(rdf[c], errors="coerce").fillna(0)
-    rdf["Percentage"] = rdf["Percentage"].apply(_safe_pct)
-    rdf["Timestamp"] = rdf["Timestamp"].astype(str)
-    rdf = rdf.sort_values("Timestamp").reset_index(drop=True)
-
-    subjects = sorted(rdf["Subject"].astype(str).unique(), key=nat_key)
-    subj = st.selectbox("المادة", subjects, key=f"{kp}_subj")
-    sub = rdf[rdf["Subject"].astype(str) == subj]
-    lectures = sorted(sub["Lecture"].astype(str).unique(), key=nat_key)
-
-    scope = st.radio("نطاق التقرير", ["محاضرة واحدة", "عدة محاضرات", "المادة كاملة"],
-                     horizontal=True, key=f"{kp}_scope_{subj}")
-    if scope == "محاضرة واحدة":
-        chosen = [st.selectbox("المحاضرة", lectures, key=f"{kp}_lec1_{subj}")]
-    elif scope == "عدة محاضرات":
-        chosen = st.multiselect("اختر المحاضرات", lectures, default=lectures, key=f"{kp}_lecs_{subj}")
-    else:
-        chosen = lectures
-    if not chosen:
-    st.info("اختر محاضرة واحدة على الأقل.")
-    return
-pool = sub[sub["Lecture"].astype(str).isin(chosen)]
-mode = st.radio("أي الاختبارات تدخل في التحليل؟",
-                ["كل الاختبارات", "آخر عدد من الاختبارات", "اختيار اختبارات بعينها"],
-                key=f"{kp}_mode_{subj}")
-    if mode == "آخر عدد من الاختبارات":
-        max_n = int(pool.groupby("Lecture").size().max())
-        if max_n > 1:
-            n_last = st.slider("عدد آخر الاختبارات (لكل محاضرة)", 1, min(max_n, 15), min(3, max_n),
-                               key=f"{kp}_n_{subj}")
-        else:
-            n_last = 1
-            st.caption("لديك اختبار واحد فقط في هذا النطاق.")
-        sel = pool.groupby("Lecture", group_keys=False).tail(n_last)
-        mode_text = f"آخر {n_last} اختبارات لكل محاضرة"
-    elif mode == "اختيار اختبارات بعينها":
-        order = list(pool.sort_values("Timestamp", ascending=False).index)
-        labels = {i: f"{pool.loc[i, 'Timestamp'][:16]} · {pool.loc[i, 'Lecture']} · "
-                     f"{int(pool.loc[i, 'Score'])}/{int(pool.loc[i, 'Total'])} ({pool.loc[i, 'Percentage']:g}%)"
-                  for i in order}
-        picked = st.multiselect("اختر الاختبارات", order, format_func=lambda i: labels[i],
-                                key=f"{kp}_pick_{subj}_{scope}")
-        if not picked:
-            st.info("اختر اختبارًا واحدًا على الأقل.")
-            return
-        sel = pool.loc[picked]
-        mode_text = f"{len(picked)} اختبارات محددة يدويًا"
-    else:
-        sel = pool
-        mode_text = "كل الاختبارات في النطاق"
-
-    st.caption(f"سيُحلَّل {len(sel)} اختبار من {sel['Lecture'].nunique()} محاضرة "
-               f"({sel['Timestamp'].min()[:10]} → {sel['Timestamp'].max()[:10]})")
-    if len(sel) == 1:
-        st.info("اختبار واحد فقط: سيكون التحليل أوليًا بلا حكم على الاتجاه.")
-
-    sig = hashlib.md5(json.dumps([subj, sorted(chosen), sorted(sel["Timestamp"].tolist())]).encode()).hexdigest()
-    store_key = f"{kp}_report"
-    wait = AI_COOLDOWN - (time.time() - st.session_state.get("_ai_last", 0))
-    if st.button("🤖 توليد التقرير", type="primary", use_container_width=True, key=f"{kp}_gen"):
-        if wait > 0:
-            st.warning(f"انتظر {int(wait) + 1} ثانية قبل طلب تقرير جديد.")
-        else:
-            allr = pd.DataFrame(all_results())
-            peers = {}
-            current_name = st.session_state.user["name"]
-            if not allr.empty:
-                a = allr[(allr["Subject"].astype(str) == subj) & (allr["Name"].astype(str) != current_name)]
-                for lec, g in a.groupby("Lecture"):
+for lec, g in a.groupby("Lecture"):
                     k = g["Name"].nunique()
                     if k >= 3:
-                        peers[str(lec)] = (pd.to_numeric(g["Percentage"], errors="coerce").mean(), int(k))
+                        peers[str(lec)] = (pd.to_numeric(g["Percentage"].apply(_safe_pct), errors="coerce").mean(), int(k))
             in_bank = df[(df["Subject"] == subj) & (df["Lecture"].isin(chosen))]
             bank_total = len(df[df["Subject"] == subj]) if any(c == ALL_LABEL for c in chosen) else len(in_bank)
             scope_text = f"المادة: {subj} | المحاضرات: {', '.join(chosen)} | الاختبارات: {mode_text}"
@@ -1499,8 +1424,6 @@ mode = st.radio("أي الاختبارات تدخل في التحليل؟",
         if c2.button("🗑 مسح التقرير", key=f"{kp}_clr", use_container_width=True):
             st.session_state.pop(store_key, None)
             st.rerun()
-
-
 def ai_page(df):
     user = st.session_state.user
     st.subheader("🤖 التحليل الذكي")
