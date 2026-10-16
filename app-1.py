@@ -958,7 +958,8 @@ def subject_view(df):
     if "subject" not in st.session_state:
         st.session_state.view = "home"
         st.rerun()
-    subj = st.session_state.subject    sub_df = df[df["Subject"] == subj]
+    subj = st.session_state.subject
+    sub_df = df[df["Subject"] == subj]
     c1, c2 = pick(subj, PALETTE)
     back_button("المواد", "home")
 
