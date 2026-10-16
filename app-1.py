@@ -1147,11 +1147,10 @@ def result_view():
 # ====================== تحليل الذكاء الاصطناعي ======================
 AI_COOLDOWN = 25
 AI_DEFAULT_MODELS = [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",      
-    "gemini-flash-lite-latest",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-flash",
+    "llama-3.3-70b-versatile",
+    "mistral-saba-24b",
+    "qwen/qwen3-32b",
+    "allam-2-7b",
                     ]
 AI_SYSTEM_PROMPT = """ أنت خبير جامعي مختص. حلل أداء الطالب(اذكر اسمه مسبوقًا بلفظ الأستاذ بطريقة ودية واكتب التقرير كاملا بصيغة موجهة للطلاب) الموجود في البيانات وقدم تقريراً بالعربية مع المصطلحات المهمة بالانجليزية.
 
@@ -1344,12 +1343,11 @@ def groq_generate(system_prompt, user_text):
     # 4. llama-3.3-70b-versatile: نموذج عام قوي، دعم عربي جيد
     # 5. openai/gpt-oss-120b: نموذج عام ضخم، دعم عربي مقبول
     models_to_try = [
-        "allam-2-7b",
-        "mistral-saba-24b",
-        "qwen/qwen3-32b",
-        "llama-3.3-70b-versatile",
-        "openai/gpt-oss-120b",
-    ]
+    "llama-3.3-70b-versatile",
+    "mistral-saba-24b",
+    "qwen/qwen3-32b",
+    "allam-2-7b",
+]
 
     from groq import Groq
     client = Groq(api_key=key)
