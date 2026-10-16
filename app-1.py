@@ -1152,6 +1152,7 @@ AI_DEFAULT_MODELS = [
     "gemini-flash-lite-latest",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
+                    ]
 AI_USER_TMPL = """حلّل بيانات الأداء التالية ثم اكتب التقرير وفق التعليمات.
 
 <DATA>
