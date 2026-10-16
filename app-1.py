@@ -1147,10 +1147,10 @@ def result_view():
 # ====================== تحليل الذكاء الاصطناعي ======================
 AI_COOLDOWN = 25
 AI_DEFAULT_MODELS = [
+    "gemini-3.5-flash-lite",      
     "gemini-flash-lite-latest",
-    "gemini-2.5-flash-lite",
     "gemini-3.6-flash",
-    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
 ]
 AI_SYSTEM_PROMPT = """أنت «مرشد دراسي» داخل منصة اختبارات MCQ لطلبة معهد علمي/صحي (مواد مثل الكيمياء الحيوية). مهمتك: قراءة بيانات أداء طالب واحد وكتابة تقرير قصير ودقيق ومشجِّع يخبره بما يراجعه أولًا وكيف.
