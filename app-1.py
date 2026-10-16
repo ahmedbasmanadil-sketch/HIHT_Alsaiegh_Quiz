@@ -1307,8 +1307,9 @@ def _model_missing(e):
     s = str(e).lower()
     return ("404" in s or "not found" in s or "not supported" in s
             or "503" in s or "unavailable" in s or "overloaded" in s
-            or "high demand" in s)
-
+            or "high demand" in s
+            or "429" in s or "quota" in s or "resource_exhausted" in s
+            or ("rate" in s and "limit" in s))
 
 def friendly_ai_error(e):
     s = str(e).lower()
