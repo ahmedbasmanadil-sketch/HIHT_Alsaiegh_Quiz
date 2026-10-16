@@ -1398,10 +1398,10 @@ def ai_view(df, rows, kp):
         st.info("لا توجد اختبارات بعد. أجرِ اختبارًا واحدًا على الأقل ثم عُد؛ التحليل ممكن من أول اختبار.")
         return
     qmap = df.drop_duplicates(subset=["qid"], keep="last").set_index("qid").to_dict("index")
-    rdf = pd.DataFrame(rows)
-    for c in ("Percentage", "Score", "Total"):
-        rdf[c] = pd.to_numeric(rdf[c], errors="coerce").fillna(0)
-    rdf["Timestamp"] = rdf["Timestamp"].astype(str)
+  rdf = pd.DataFrame(rows)
+for c in ("Score", "Total"):
+    rdf[c] = pd.to_numeric(rdf[c], errors="coerce").fillna(0)
+    rdf["Percentage"] = rdf["Percentage"].apply(_safe_pct)  rdf["Timestamp"] = rdf["Timestamp"].astype(str)
     rdf = rdf.sort_values("Timestamp").reset_index(drop=True)
 
     subjects = sorted(rdf["Subject"].astype(str).unique(), key=nat_key)
