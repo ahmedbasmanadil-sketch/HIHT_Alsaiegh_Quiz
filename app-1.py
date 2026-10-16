@@ -1330,56 +1330,48 @@ def friendly_ai_error(e):
     return f"تفاصيل الخطأ: {raw}"
 
 
-def gemini_generate(system_prompt, user_text):
+def groq_generate(system_prompt, user_text):
+    """توليد النص عبر Groq API مع نظام احتياطي للنماذج مرتبة حسب جودة اللغة العربية."""
     try:
-        key = st.secrets["GEMINI_API_KEY"]
+        key = st.secrets["GROQ_API_KEY"]
     except Exception:
-        raise RuntimeError("GEMINI_API_KEY غير مضاف في Secrets")
-    wanted = None
-    try:
-        wanted = st.secrets.get("GEMINI_MODEL")
-    except Exception:
-        pass
-    models = list(dict.fromkeys([m for m in [wanted] + AI_DEFAULT_MODELS if m]))
+        raise RuntimeError("مفتاح GROQ_API_KEY غير مضاف في Secrets")
+
+    # الترتيب حسب الأفضلية للغة العربية (لا يهم السرعة أو القيود)
+    # 1. allam-2-7b: نموذج عربي متخصص من SDAIA، مصمم خصيصاً للعربية
+    # 2. mistral-saba-24b: نموذج محسّن للعربية وجنوب آسيا، 77.39 على MBZUAI Arabic MMLU
+    # 3. qwen/qwen3-32b: نموذج متعدد اللغات قوي، دعم عربي جيد
+    # 4. llama-3.3-70b-versatile: نموذج عام قوي، دعم عربي جيد
+    # 5. openai/gpt-oss-120b: نموذج عام ضخم، دعم عربي مقبول
+    models_to_try = [
+        "allam-2-7b",
+        "mistral-saba-24b",
+        "qwen/qwen3-32b",
+        "llama-3.3-70b-versatile",
+        "openai/gpt-oss-120b",
+    ]
+
+    from groq import Groq
+    client = Groq(api_key=key)
     last_err = None
-    new_genai = None
-    try:
-        from google import genai as new_genai
-        from google.genai import types as new_types
-    except ImportError:
-        new_genai = None
-    if new_genai is not None:
-        client = new_genai.Client(api_key=key)
-        for m in models:
-            try:
-                resp = client.models.generate_content(
-                    model=m, contents=user_text,
-                    config=new_types.GenerateContentConfig(system_instruction=system_prompt,
-                                                          temperature=0.3, max_output_tokens=4096))
-                text = (resp.text or "").strip()
-                if text:
-                    return text, m
-                last_err = RuntimeError("رد فارغ من النموذج")
-            except Exception as e:
-                last_err = e
-                if not _model_missing(e):
-                    raise
-        raise last_err or RuntimeError("لا يوجد نموذج متاح")
-    import google.generativeai as legacy
-    legacy.configure(api_key=key)
-    for m in models:
+
+    for model_name in models_to_try:
         try:
-            model = legacy.GenerativeModel(m, system_instruction=system_prompt)
-            resp = model.generate_content(user_text, generation_config={"temperature": 0.3, "max_output_tokens": 4096})
-            text = (resp.text or "").strip()
+            full_prompt = f"{system_prompt}\n\n---\n\n{user_text}"
+            chat_completion = client.chat.completions.create(
+                messages=[{"role": "user", "content": full_prompt}],
+                model=model_name,
+                temperature=0.3,
+                max_tokens=4096,
+            )
+            text = chat_completion.choices[0].message.content.strip()
             if text:
-                return text, m
+                return text, model_name
         except Exception as e:
             last_err = e
-            if not _model_missing(e):
-                raise
-    raise last_err or RuntimeError("لا يوجد نموذج متاح")
+            continue
 
+    raise last_err or RuntimeError("لا يوجد نموذج Groq متاح")
 
 def ai_view(df, rows, kp):
     if not rows:
