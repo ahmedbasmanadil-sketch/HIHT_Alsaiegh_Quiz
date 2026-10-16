@@ -1323,8 +1323,9 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
 
 def _model_missing(e):
     s = str(e).lower()
-    return "404" in s or "not found" in s or "not supported" in s
-
+    return ("404" in s or "not found" in s or "not supported" in s
+            or "503" in s or "unavailable" in s or "overloaded" in s
+            or "high demand" in s)
 
 def friendly_ai_error(e):
     s = str(e).lower()
