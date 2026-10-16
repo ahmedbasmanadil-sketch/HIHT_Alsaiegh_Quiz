@@ -1419,12 +1419,12 @@ for c in ("Score", "Total"):
     else:
         chosen = lectures
     if not chosen:
-        st.info("اختر محاضرة واحدة على الأقل.")
-        return
-    pool = sub[sub["Lecture"].astype(str).isin(chosen)]
-    mode = st.radio("أي الاختبارات تدخل في التحليل؟",
-                    ["كل الاختبارات", "آخر عدد من الاختبارات", "اختيار اختبارات بعينها"],
-                    key=f"{kp}_mode_{subj}")
+    st.info("اختر محاضرة واحدة على الأقل.")
+    return
+pool = sub[sub["Lecture"].astype(str).isin(chosen)]
+mode = st.radio("أي الاختبارات تدخل في التحليل؟",
+                ["كل الاختبارات", "آخر عدد من الاختبارات", "اختيار اختبارات بعينها"],
+                key=f"{kp}_mode_{subj}")
     if mode == "آخر عدد من الاختبارات":
         max_n = int(pool.groupby("Lecture").size().max())
         if max_n > 1:
