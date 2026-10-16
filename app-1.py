@@ -899,7 +899,7 @@ def gate():
 
     with t_reg:
         st.caption("أنشئ حسابك لمتابعة تقدمك ومراجعة إجاباتك السابقة.")
-        u = st.text_input("اسم المستخدم (يفضل اسمك الحقيقي)", key="reg_u")
+        u = st.text_input("اسم المستخدم ", key="reg_u")
         p = st.text_input("كلمة المرور (4 أحرف فأكثر)", type="password", key="reg_p")
         if st.button("إنشاء الحساب", type="primary", use_container_width=True):
             if not u.strip() or len(p) < 4:
