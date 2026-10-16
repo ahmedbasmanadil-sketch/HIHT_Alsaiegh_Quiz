@@ -1343,7 +1343,8 @@ def groq_generate(system_prompt, user_text):
     # 4. llama-3.3-70b-versatile: نموذج عام قوي، دعم عربي جيد
     # 5. openai/gpt-oss-120b: نموذج عام ضخم، دعم عربي مقبول
     models_to_try = [
-    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.6-27b",
 ]
 
     from groq import Groq
