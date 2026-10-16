@@ -1343,7 +1343,7 @@ def account_view(df):
     rows = my_rows(name)
     pcts = []
     for r in rows:
-    try:
+        try:
         v = float(r.get("Percentage") or 0)
     except (ValueError, TypeError):
         v = 0
