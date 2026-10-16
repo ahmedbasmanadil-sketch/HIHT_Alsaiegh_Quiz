@@ -1420,9 +1420,8 @@ for c in ("Score", "Total"):
         chosen = lectures
     if not chosen:
         st.info("اختر محاضرة واحدة على الأقل.")
-    return
+        return
     pool = sub[sub["Lecture"].astype(str).isin(chosen)]
-
     mode = st.radio("أي الاختبارات تدخل في التحليل؟",
                     ["كل الاختبارات", "آخر عدد من الاختبارات", "اختيار اختبارات بعينها"],
                     key=f"{kp}_mode_{subj}")
