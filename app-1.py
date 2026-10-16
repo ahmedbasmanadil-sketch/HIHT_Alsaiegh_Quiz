@@ -1285,6 +1285,7 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     seen = len(log)
     blank_pct = (blanks / answered_total * 100) if answered_total else 0
     parts = [
+        f"[الطالب] {st.session_state.user['name']}",
         f"[النطاق] {scope_text}",
         f"[موثوقية البيانات] {confidence_label(n)} — أسئلة مختلفة ظهرت: {seen}"
         + (f" من {bank_total} في البنك (تغطية {seen / bank_total * 100:.0f}%)" if bank_total else ""),
