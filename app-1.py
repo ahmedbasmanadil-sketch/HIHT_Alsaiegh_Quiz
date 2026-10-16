@@ -1403,10 +1403,10 @@ def ai_view(df, rows, kp):
         return
     qmap = df.drop_duplicates(subset=["qid"], keep="last").set_index("qid").to_dict("index")
     rdf = pd.DataFrame(rows)
-           with st.expander("🔍 تشخيص مؤقت"):
-    st.write("الأعمدة:", list(rdf.columns))
-    st.write("قيم Percentage الخام:", rdf["Percentage"].tolist()[:5])
-    st.write("أنواع:", rdf["Percentage"].apply(type).tolist()[:5])
+    with st.expander("🔍 تشخيص مؤقت"):
+        st.write("الأعمدة:", list(rdf.columns))
+        st.write("قيم Percentage الخام:", rdf["Percentage"].tolist()[:5])
+        st.write("أنواع:", rdf["Percentage"].apply(type).tolist()[:5])
     for c in ("Score", "Total"):
         rdf[c] = pd.to_numeric(rdf[c], errors="coerce").fillna(0)
     rdf["Percentage"] = rdf["Percentage"].apply(_safe_pct)
