@@ -1230,10 +1230,21 @@ def parse_answers(raw):
         return {}
 
 
+def _safe_pct(v):
+    """يستخرج النسبة الرقمية من أي صيغة (رقم، نص، '76.5%'، '76,5')."""
+    if v is None:
+        return 0.0
+    s = str(v).strip().replace("%", "").replace(",", ".").replace(" ", "")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     sel = sel.sort_values("Timestamp").reset_index(drop=True)
     n = len(sel)
-    pcts = [float(p) for p in sel["Percentage"]]
+    pcts = [_safe_pct(p) for p in sel["Percentage"]]
     log, blanks, answered_total = {}, 0, 0
     attempt_lines = []
     for i, row in sel.iterrows():
@@ -1244,11 +1255,11 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
         for qid, (chosen, correct) in ans.items():
             log.setdefault(qid, []).append((chosen, correct))
         attempt_lines.append(f"#{i + 1} | {str(row['Timestamp'])[:10]} | {row['Lecture']} | "
-                             f"{int(row['Score'])}/{int(row['Total'])} | {row['Percentage']:g}% | بدون إجابة: {b}")
+                             f"{int(row['Score'])}/{int(row['Total'])} | {_safe_pct(row['Percentage']):g}% | بدون إجابة: {b}")
 
     lec_lines = []
     for lec, g in sel.groupby("Lecture", sort=False):
-        gp = [float(p) for p in g["Percentage"]]
+        gp = [_safe_pct(p) for p in g["Percentage"]]
         line = (f"- {lec}: {len(g)} اختبار، المتوسط {sum(gp) / len(gp):.1f}%، الأول {gp[0]:g}% ← الأخير {gp[-1]:g}%، "
                 f"الأفضل {max(gp):g}%")
         if lec in peers:
@@ -1310,7 +1321,6 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
         parts.append(f"(+ {omitted} أسئلة أخرى بأخطاء أقل أولوية لم تُعرض)")
     return "\n\n".join(parts)
 
-
 def _model_missing(e):
     s = str(e).lower()
     return "404" in s or "not found" in s or "not supported" in s
@@ -1318,16 +1328,18 @@ def _model_missing(e):
 
 def friendly_ai_error(e):
     s = str(e).lower()
+    raw = str(e)[:250]
     if "gemini_api_key" in s or ("api key" in s and "not valid" in s) or "api_key_invalid" in s:
-        return "مفتاح Gemini غير صالح أو غير مضاف في Secrets."
+        return f"مفتاح Gemini غير صالح. ({raw})"
     if "429" in s or "quota" in s or "resource_exhausted" in s or ("rate" in s and "limit" in s):
-        return "وصلنا لحد الاستخدام المؤقت لخدمة Gemini. انتظر دقيقة ثم أعد المحاولة."
+        return "وصلنا لحد الاستخدام المؤقت. انتظر دقيقة."
     if "403" in s or "permission" in s:
-        return "المفتاح لا يملك صلاحية استخدام النموذج. راجع إعدادات المفتاح في Google AI Studio."
+        return f"المفتاح لا يملك صلاحية. ({raw})"
     if "timeout" in s or "deadline" in s or "connection" in s:
-        return "انقطع الاتصال بخدمة Gemini. أعد المحاولة بعد قليل."
-    return "تعذر توليد التقرير الآن. أعد المحاولة بعد قليل."
-
+        return "انقطع الاتصال. أعد المحاولة."
+    if "404" in s or "not found" in s or "not supported" in s:
+        return f"اسم النموذج غير مدعوم. ({raw})"
+    return f"تفاصيل الخطأ: {raw}"
 
 def gemini_generate(system_prompt, user_text):
     try:
