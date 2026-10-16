@@ -1112,6 +1112,7 @@ def quiz_view(df):
     st.progress(answered / max(len(quiz["ids"]), 1), text=f"أجبت عن {answered} من {len(quiz['ids'])} سؤال")
     if st.button("✅ إكمال الإختبار ", type="primary", use_container_width=True):
         answers, review, score = {}, [], 0
+        smap_local = quiz.get("shuffle", {}) or {}
         for qid in quiz["ids"]:
             row = qmap[qid]
             chosen = answers_state.get(qid, "") or ""
@@ -1119,9 +1120,17 @@ def quiz_view(df):
             ok = chosen == correct
             score += ok
             answers[qid] = [chosen, correct]
+            shuf = smap_local.get(qid) or [L for L in LETTERS if str(row.get(f"Option{L}", "")).strip()]
+            def _disp(letter):
+                if not letter:
+                    return "—"
+                try:
+                    return LETTERS[shuf.index(letter)]
+                except (ValueError, IndexError):
+                    return letter
             review.append({"q": row["Question"], "ok": ok,
-                "chosen_text": f"{chosen}) {row['Option' + chosen]}" if chosen else "بدون إجابة",
-                "correct_text": f"{correct}) {row['Option' + correct]}"})
+                "chosen_text": f"{_disp(chosen)}) {row['Option' + chosen]}" if chosen else "بدون إجابة",
+                "correct_text": f"{_disp(correct)}) {row['Option' + correct]}"})
         total = len(quiz["ids"])
         if user.get("account"):
             delete_draft(user["name"])
