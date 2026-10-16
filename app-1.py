@@ -1020,9 +1020,25 @@ def setup_view(df):
         st.caption(f"متوفر {len(pool)} سؤال. تظهر الأسئلة بترتيبها الأصلي.")
 
     options = [n for n in (10, 20, 30) if n < len(pool)]
-    labels = [str(n) for n in options] + [f"الكل ({len(pool)})"]
+    labels = [str(n) for n in options] + ["مخصص", f"الكل ({len(pool)})"]
     choice = st.radio("عدد الأسئلة", labels, horizontal=True, index=len(labels) - 1)
-    n = len(pool) if choice.startswith("الكل") else int(choice)
+
+    if choice == "مخصص":
+        lo = min(10, len(pool))
+        hi = len(pool)
+        default_val = max(lo, min(15, hi))
+        n = st.number_input(
+            f"أدخل عدداً بين {lo} و {hi}",
+            min_value=lo,
+            max_value=hi,
+            value=default_val,
+            step=1,
+            key="custom_qty",
+    )
+    elif choice.startswith("الكل"):
+        n = len(pool)
+    else:
+        n = int(choice)
 
     if st.button("🚀 ابدأ الاختبار", type="primary", use_container_width=True):
         ids = list(pool["qid"])
@@ -1035,7 +1051,6 @@ def setup_view(df):
         st.session_state.quiz = quiz
         st.session_state.quiz_answers = {}
         go("quiz", quiz=quiz)
-
 
 # ====================== الاختبار ======================
 def quiz_view(df):
