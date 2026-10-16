@@ -863,7 +863,7 @@ def gate():
     t_guest, t_login, t_reg = st.tabs(["ضيف", "تسجيل الدخول", "حساب جديد"])
 
     with t_guest:
-        st.caption("تصل نتيجتك للمشرف، لكن لا يُحفظ لك سجل.")
+        st.caption("تستطيع أداء الأمتحان, لكن لن تستطيع مراجعة سجلك الشخصي.")
         name = st.text_input("اسمك", key="guest_name")
         if st.button("ابدأ كضيف", type="primary", use_container_width=True):
             if name.strip():
@@ -898,7 +898,7 @@ def gate():
             st.info("راسل المشرف لتغيير الرمز.")
 
     with t_reg:
-        st.caption("الحساب يحفظ سجل اختباراتك ويحلل نقاط ضعفك.")
+        st.caption("أنشئ حسابك لمتابعة تقدمك ومراجعة إجاباتك السابقة.")
         u = st.text_input("اسم المستخدم (يفضل اسمك الحقيقي)", key="reg_u")
         p = st.text_input("كلمة المرور (4 أحرف فأكثر)", type="password", key="reg_p")
         if st.button("إنشاء الحساب", type="primary", use_container_width=True):
@@ -932,7 +932,7 @@ def home_view(df):
                       if (2 if "second" in str(r.get("Semester", "")).lower() or "2" == str(r.get("Semester", "")).strip() or "ثان" in str(r.get("Semester", "")) else 1) == sem_n]
     subjects = sorted(set(sdf["Subject"].unique()).union(material_names), key=nat_key)
     if not subjects:
-        st.info("لا توجد مواد في هذا الفصل بعد، يمكنك إضافتها من لوحة المشرف.")
+        st.info("لا توجد مواد في هذا الفصل بعد.")
         return
     assets = safe_assets()
     cols = st.columns(2)
@@ -971,7 +971,7 @@ def subject_view(df):
         unsafe_allow_html=True,
     )
     if sub_df.empty:
-        st.info("أُضيفت هذه المادة، لكن لا توجد أسئلة لها بعد. يمكنك رفع ملف CSV من لوحة المشرف.")
+        st.info("أُضيفت هذه المادة، لكن لا توجد أسئلة لها بعد.")
         return
 
     best = {}
@@ -1047,7 +1047,7 @@ def quiz_view(df):
 
     c_back, c_title = st.columns([1, 4])
     with c_back:
-        if st.button("↩️ إلغاء", use_container_width=True):
+        if st.button("↩️العودة وإلغاء الإختبار ", use_container_width=True):
             if user.get("account"):
                 try:
                     delete_draft(user["name"])
@@ -1080,7 +1080,7 @@ def quiz_view(df):
         except Exception:
             pass
     st.progress(answered / max(len(quiz["ids"]), 1), text=f"أجبت عن {answered} من {len(quiz['ids'])} سؤال")
-    if st.button("✅ إنهاء وإرسال", type="primary", use_container_width=True):
+    if st.button("✅ إكمال الإختبار ", type="primary", use_container_width=True):
         answers, review, score = {}, [], 0
         for qid in quiz["ids"]:
             row = qmap[qid]
@@ -1120,7 +1120,7 @@ def result_view():
         unsafe_allow_html=True,
     )
     if res.get("saved"):
-        st.caption("✅ تم إرسال نتيجتك.")
+        st.caption("✅ تم اكمال الإختبار.")
     else:
         st.warning("تعذر حفظ النتيجة في الجدول. التقط صورة لها وأرسلها للمشرف.")
 
