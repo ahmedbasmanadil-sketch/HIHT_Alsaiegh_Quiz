@@ -1459,7 +1459,7 @@ def ai_view(df, rows, kp):
             facts = build_ai_facts(sel, qmap, peers, bank_total, scope_text)
             with st.spinner("جارٍ تحليل أدائك…"):
                 try:
-                    text, model = gemini_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
+                    text, model = groq_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
                     st.session_state[store_key] = {"text": text, "model": model, "sig": sig, "scope": scope_text}
                     st.session_state["_ai_last"] = time.time()
                 except Exception as e:
