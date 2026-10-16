@@ -955,8 +955,10 @@ def home_view(df):
 # ====================== المادة: المحاضرات ======================
 def subject_view(df):
     user = st.session_state.user
-    subj = st.session_state.subject
-    sub_df = df[df["Subject"] == subj]
+    if "subject" not in st.session_state:
+        st.session_state.view = "home"
+        st.rerun()
+    subj = st.session_state.subject    sub_df = df[df["Subject"] == subj]
     c1, c2 = pick(subj, PALETTE)
     back_button("المواد", "home")
 
@@ -1008,6 +1010,9 @@ def subject_view(df):
 
 # ====================== إعداد الاختبار ======================
 def setup_view(df):
+    if "subject" not in st.session_state or "lecture" not in st.session_state:
+        st.session_state.view = "home"
+        st.rerun()
     subj, lec = st.session_state.subject, st.session_state.lecture
     pool = df[df["Subject"] == subj]
     if lec != ALL:
