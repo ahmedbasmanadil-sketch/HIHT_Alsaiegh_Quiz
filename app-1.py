@@ -1413,7 +1413,34 @@ def groq_generate(system_prompt, user_text):
             continue
 
     raise last_err or RuntimeError("لا يوجد نموذج Groq متاح")
+def claude_generate(system_prompt, user_text):
+    """توليد النص عبر Claude Haiku 5.5 (للمميزين فقط)"""
+    try:
+        from anthropic import Anthropic
+        api_key = st.secrets["ANTHROPIC_API_KEY"]
+    except Exception:
+        raise RuntimeError("مفتاح ANTHROPIC_API_KEY غير مضاف في Secrets")
 
+    client = Anthropic(api_key=api_key)
+    
+    try:
+        response = client.messages.create(
+            model="claude-haiku-5-5",
+            max_tokens=2048,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_text}]
+        )
+        
+        # استخراج النص من البلوكات (تجنب خطأ ThinkingBlock)
+        raw_text = ""
+        for block in response.content:
+            if block.type == "text":
+                raw_text += block.text
+                
+        return raw_text.strip(), "claude-haiku-5-5"
+    except Exception as e:
+        raise RuntimeError(f"Claude Error: {e}")
+               
 def ai_view(df, rows, kp):
     if not rows:
         st.info("لا توجد اختبارات بعد. أجرِ اختبارًا واحدًا على الأقل ثم عُد؛ التحليل ممكن من أول اختبار.")
@@ -1501,7 +1528,17 @@ def ai_view(df, rows, kp):
             facts = build_ai_facts(sel, qmap, peers, bank_total, scope_text)
             with st.spinner("جارٍ تحليل أدائك…"):
                 try:
-                    text, model = groq_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
+                    # فحص إذا كان المستخدم مميزاً (Premium) لاستخدام Claude، وإلا سيستخدم Groq
+current_user = st.session_state.user["name"]
+if is_premium(current_user):
+    with st.spinner("جاري التحليل العميق عبر Claude..."):
+        try:
+            text, model = claude_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
+        except Exception as e:
+            st.warning(f"تعذر استخدام Claude، سيتم استخدام Groq كاحتياطي. ({e})")
+            text, model = groq_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
+else:
+    text, model = groq_generate(AI_SYSTEM_PROMPT, AI_USER_TMPL.format(facts=facts))
                     st.session_state[store_key] = {"text": text, "model": model, "sig": sig, "scope": scope_text}
                     st.session_state["_ai_last"] = time.time()
                 except Exception as e:
