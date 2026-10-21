@@ -1089,7 +1089,7 @@ def setup_view(df):
             n = int(choice)
     else:  # Short
         st.caption(f"متوفر {len(pool)} سؤال. الدرجة النهائية تُحسب من 100 تلقائياً.")
-        st.info("💡 يمكنك تجاوز أي سؤال لا تعرف إجابته — لن يُحسب ضمن الدرجة النهائية.")
+        st.info("💡 يمكنك تجاوز أي سؤال لا تريد إجابته — لن يُحسب ضمن الدرجة النهائية.")
         options_s = [m for m in (3, 5, 10) if m < len(pool)]
         labels_s = [str(m) for m in options_s] + [f"الكل ({len(pool)})"]
         choice_s = st.radio("عدد الأسئلة", labels_s, horizontal=True, index=len(labels_s) - 1, key=f"short_num_{subj}_{lec}")
