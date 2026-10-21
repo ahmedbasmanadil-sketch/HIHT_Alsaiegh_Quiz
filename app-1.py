@@ -1533,20 +1533,21 @@ def ai_view(df, rows, kp):
             scope_text = f"المادة: {subj} | المحاضرات: {', '.join(chosen)} | الاختبارات: {mode_text}"
         facts = build_ai_facts(sel, qmap, peers, bank_total, scope_text)
         
+        def _run_ai_analysis():
+            current_user = st.session_state.user["name"]
+            facts_text = AI_USER_TMPL.format(facts=facts)
+            if is_premium(current_user):
+                try:
+                    return claude_generate_report(AI_SYSTEM_PROMPT, facts_text)
+                except Exception as claude_err:
+                    st.warning(f"Claude failed, using Groq: {claude_err}")
+                    return groq_generate(AI_SYSTEM_PROMPT, facts_text)
+            else:
+                return groq_generate(AI_SYSTEM_PROMPT, facts_text)
+
         with st.spinner("جارٍ تحليل أدائك…"):
             try:
-                current_user = st.session_state.user["name"]
-                facts_text = AI_USER_TMPL.format(facts=facts)
-                
-                if is_premium(current_user):
-                    try:
-                        text, model = claude_generate_report(AI_SYSTEM_PROMPT, facts_text)
-                    except Exception as claude_err:
-                        st.warning(f"Claude failed, using Groq: {claude_err}")
-                        text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
-                else:
-                    text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
-                    
+                text, model = _run_ai_analysis()
                 st.session_state[store_key] = {"text": text, "model": model, "sig": sig, "scope": scope_text, "facts": facts}
                 st.session_state["_ai_last"] = time.time()
             except Exception as e:
@@ -1554,8 +1555,7 @@ def ai_view(df, rows, kp):
                 if is_admin(st.session_state.user["name"]):
                     st.caption(f"تفصيل للمشرف: {_clip(e, 300)}")
 
-    rep = st.session_state.get(store_key)    rep = st.session_state.get(store_key)
-    if rep:
+    rep = st.session_state.get(store_key)    if rep:
         if rep["sig"] != sig:
             st.caption("⚠ هذا التقرير لنطاق سابق. اضغط «توليد التقرير» لتحديثه حسب اختياراتك الحالية.")
         with box():
