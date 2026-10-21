@@ -1472,21 +1472,51 @@ def claude_generate_report(system_prompt, user_text):
     try:
         response = client.messages.create(
             model="claude-haiku-5-5",
-            max_tokens=2048,
+            max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}]
         )
-
-        # استخراج النص من البلوكات (تجنب خطأ ThinkingBlock)
-        raw_text = ""
-        for block in response.content:
-            if getattr(block, "type", "") == "text":
-                raw_text += block.text
-
-        return raw_text.strip(), "claude-haiku-5-5"
     except Exception as e:
-        raise RuntimeError(f"Claude Error: {e}")
+        raise RuntimeError(f"Claude API Error: {e}")
 
+    # ===== استخراج النص من كل أشكال البلوكات =====
+    raw_text = ""
+    diag = []
+    for block in response.content:
+        # يدعم dict و object معاً
+        if isinstance(block, dict):
+            btype = block.get("type", "")
+            btext = block.get("text", "") or ""
+        else:
+            btype = getattr(block, "type", "")
+            btext = getattr(block, "text", "") or ""
+
+        diag.append(f"{btype}:{len(btext)}")
+
+        if btype == "text" and btext:
+            raw_text += btext
+
+    # احتياط: خذ أي block فيه نص حتى لو لم يكن type=text
+    if not raw_text.strip():
+        for block in response.content:
+            if isinstance(block, dict):
+                btext = block.get("text", "") or ""
+            else:
+                btext = getattr(block, "text", "") or ""
+            if btext:
+                raw_text += btext
+
+    raw_text = raw_text.strip()
+
+    # إذا فشل كل شيء → خطأ تشخيصي واضح
+    if not raw_text:
+        stop_reason = getattr(response, "stop_reason", "N/A")
+        raise RuntimeError(
+            f"Claude رجّع نصاً فارغاً — "
+            f"stop_reason={stop_reason} | blocks=[{', '.join(diag)}]"
+        )
+
+    return raw_text, "claude-haiku-5-5"
 
 def ai_view(df, rows, kp):
     if not rows:
