@@ -300,6 +300,7 @@ def load_questions():
     return df.reset_index(drop=True)
 
 def delete_question_bank_rows(subject=None, lecture=None, semester=None, qtype=None):
+    """حذف الأسئلة مع تجميع الصفوف المتتالية لتقليل طلبات API."""
     ws = question_bank_ws()
     values = ws.get_all_values()
     if len(values) <= 1:
@@ -320,11 +321,29 @@ def delete_question_bank_rows(subject=None, lecture=None, semester=None, qtype=N
         if qtype is not None and _normalize_type(cell("Type")) != qtype:
             continue
         delete_indices.append(row_num)
-    for row_num in reversed(delete_indices):
-        ws.delete_rows(row_num)
+
+    if delete_indices:
+        # ===== تجميع الصفوف المتتالية وحذف كل مجموعة بطلب واحد =====
+        groups = []
+        current = [delete_indices[0]]
+        for n in delete_indices[1:]:
+            if n == current[-1] + 1:
+                current.append(n)
+            else:
+                groups.append(current)
+                current = [n]
+        groups.append(current)
+
+        # الحذف من الأسفل للأعلى (لأن حذف صف يغيّر أرقام ما بعده)
+        for group in reversed(groups):
+            start, end = group[0], group[-1]
+            if start == end:
+                ws.delete_rows(start)
+            else:
+                ws.delete_rows(start, end)  # طلب واحد لمجموعة كاملة
+
     load_questions.clear()
     return len(delete_indices)
-
 def persist_csv_questions(uploaded_file, subject, lecture, semester):
     file_bytes = uploaded_file.getvalue()
     decoded_text = None
