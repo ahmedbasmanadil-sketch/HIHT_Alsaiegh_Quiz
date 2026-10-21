@@ -1516,6 +1516,13 @@ def claude_generate_report(system_prompt, user_text):
             f"stop_reason={stop_reason} | blocks=[{', '.join(diag)}]"
         )
 
+    usage = getattr(response, "usage", None)
+    if usage:
+        st.caption(
+            f"🔢 Tokens — إدخال: {usage.input_tokens:,} · "
+            f"إخراج: {usage.output_tokens:,} · "
+            f"إجمالي: {usage.input_tokens + usage.output_tokens:,}"
+        )
     return raw_text, "claude-haiku-5-5"
 
 def ai_view(df, rows, kp):
