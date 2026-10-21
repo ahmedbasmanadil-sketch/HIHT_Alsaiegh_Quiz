@@ -1531,7 +1531,7 @@ def ai_view(df, rows, kp):
             in_bank = df[(df["Subject"] == subj) & (df["Lecture"].isin(chosen))]
             bank_total = len(df[df["Subject"] == subj]) if any(c == ALL_LABEL for c in chosen) else len(in_bank)
             scope_text = f"المادة: {subj} | المحاضرات: {', '.join(chosen)} | الاختبارات: {mode_text}"
-                    facts = build_ai_facts(sel, qmap, peers, bank_total, scope_text)
+        facts = build_ai_facts(sel, qmap, peers, bank_total, scope_text)
         
         with st.spinner("جارٍ تحليل أدائك…"):
             try:
@@ -1539,14 +1539,12 @@ def ai_view(df, rows, kp):
                 facts_text = AI_USER_TMPL.format(facts=facts)
                 
                 if is_premium(current_user):
-                    # للمشرف: استخدم Claude
                     try:
                         text, model = claude_generate_report(AI_SYSTEM_PROMPT, facts_text)
                     except Exception as claude_err:
-                        st.warning(f"تعذر استخدام Claude، سيتم استخدام Groq كاحتياطي. ({claude_err})")
+                        st.warning(f"Claude failed, using Groq: {claude_err}")
                         text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
                 else:
-                    # للطلاب: استخدم Groq
                     text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
                     
                 st.session_state[store_key] = {"text": text, "model": model, "sig": sig, "scope": scope_text, "facts": facts}
@@ -1555,7 +1553,8 @@ def ai_view(df, rows, kp):
                 st.error(friendly_ai_error(e))
                 if is_admin(st.session_state.user["name"]):
                     st.caption(f"تفصيل للمشرف: {_clip(e, 300)}")
-    rep = st.session_state.get(store_key)
+
+    rep = st.session_state.get(store_key)    rep = st.session_state.get(store_key)
     if rep:
         if rep["sig"] != sig:
             st.caption("⚠ هذا التقرير لنطاق سابق. اضغط «توليد التقرير» لتحديثه حسب اختياراتك الحالية.")
