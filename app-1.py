@@ -40,7 +40,13 @@ PALETTE = [("#6C5CE7", "#a29bfe"), ("#00b894", "#55efc4"), ("#e17055", "#fab1a0"
 EMOJIS = ["🧬", "🧪", "💉", "🩸", "🔬", "🧫", "⚗️", "🦠", "💊"]
 MAX_CELL = 44000
 
+# ====================== إعدادات الـ Premium ======================
+PREMIUM_USERS = ["ahmed basman"]  # أضف أسماء الأصدقاء هنا لاحقاً
 
+def is_premium(name):
+    """التحقق مما إذا كان المستخدم مصرحاً له باستخدام Claude"""
+    return name.strip().lower() in [u.lower() for u in PREMIUM_USERS]
+           
 # ====================== الاتصال بـ Google Sheets ======================
 @st.cache_resource(show_spinner=False)
 def get_book():
