@@ -1437,11 +1437,7 @@ def _quiz_view_short(df, quiz):
     with c_title:
         st.subheader(f"{quiz['subject']} — {quiz['lecture']} [Short Answers]")
 
-    if not is_premium(user["name"]):
-        st.warning("⭐ هذه الميزة لمستخدمي Premium فقط.")
-        return
-
-    st.success("⭐ تصحيح ذكي عبر Claude Haiku 5.5 — يظهر استهلاك التوكنز في النتيجة.")
+    
     st.caption("💡 **تجاوز** = استبعاد السؤال من الدرجة النهائية · **تركه فارغاً بدون تجاوز** = صفر")
 
     answers_state = st.session_state.setdefault("quiz_answers", {})
