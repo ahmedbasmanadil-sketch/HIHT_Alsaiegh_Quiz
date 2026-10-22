@@ -988,6 +988,8 @@ def subject_view(df):
     sub_df = df[df["Subject"] == subj]
     c1, c2 = pick(subj, PALETTE)
     back_button("المواد", "home")
+    st.subheader(subj)
+    st.caption(f"{sub_df['Lecture'].nunique()} محاضرات · {len(sub_df)} سؤال")
            
     if sub_df.empty:
         st.info("أُضيفت هذه المادة، لكن لا توجد أسئلة لها بعد.")
