@@ -1062,11 +1062,9 @@ def setup_view(df):
 
     # ===== Premium gate =====
     if test_type == "Short":
-        if not is_premium(st.session_state.user["name"]):
-            st.warning("⭐ اختبارات Short Answers متاحة لمستخدمي Premium فقط حالياً.")
-            st.caption("تواصل مع المشرف لتفعيل الميزة على حسابك.")
+        if short_mode() == "premium" and not is_premium(st.session_state.user["name"]):
+            st.warning("⭐ Short Answers قيد التجربة حالياً. سيتوفر قريباً.")
             return
-        st.success("⭐ أنت مستخدم Premium — تصحيح Short Answers سيُجرى عبر Claude Haiku 5.5.")
 
     pool = pool_all[pool_all["Type"] == test_type]
 
@@ -1479,30 +1477,6 @@ def _quiz_view_short(df, quiz):
                 answers_state.pop(qid, None)
                 continue
 
-            with st.expander("📷 رفع صورة الإجابة (خط اليد)"):
-                img_file = st.file_uploader("اختر صورة واضحة",
-                                            type=["png", "jpg", "jpeg"],
-                                            key=f"img_{qid}")
-                if img_file is not None:
-                    if st.button("📖 استخراج النص", key=f"ext_{qid}", use_container_width=True):
-                        with st.spinner("جارٍ استخراج النص…"):
-                            try:
-                                extracted, usage = extract_text_from_image(img_file)
-                                if extracted:
-                                    st.session_state[ans_key] = extracted
-                                    answers_state[qid] = extracted
-                                    if usage:
-                                        st.caption(
-                                            f"🔢 Tokens — إدخال: {usage['input']:,} · "
-                                            f"إخراج: {usage['output']:,}"
-                                        )
-                                    st.success(f"✅ تم استخراج {len(extracted)} حرف.")
-                                    st.rerun()
-                                else:
-                                    st.warning("لم يُعثر على نص واضح في الصورة.")
-                            except Exception as e:
-                                st.error(f"تعذر الاستخراج: {e}")
-
             current = st.session_state.get(ans_key, answers_state.get(qid, ""))
             ans = st.text_area(
                 "إجابتك",
@@ -1661,20 +1635,6 @@ def _result_view_short(res):
         st.caption("✅ تم حفظ النتيجة.")
     else:
         st.warning("تعذر حفظ النتيجة. التقط صورة لها وأرسلها للمشرف.")
-
-    usage = res.get("usage")
-    if usage:
-        in_tok = usage.get("input", 0)
-        out_tok = usage.get("output", 0)
-        cache_read = usage.get("cache_read", 0)
-        cache_write = usage.get("cache_write", 0)
-        parts = [f"🔢 Tokens — إدخال: {in_tok:,}", f"إخراج: {out_tok:,}",
-                 f"إجمالي: {in_tok + out_tok:,}"]
-        if cache_read:
-            parts.append(f"💾 من الكاش: {cache_read:,}")
-        if cache_write:
-            parts.append(f"✍️ إلى الكاش: {cache_write:,}")
-        st.caption(" · ".join(parts))
 
     st.subheader(f"مراجعة الإجابات ({len(res['review'])})")
     for item in res["review"]:
@@ -1948,13 +1908,13 @@ def claude_generate_report(system_prompt, user_text):
         )
 
     usage = getattr(response, "usage", None)
+    usage_dict = None
     if usage:
-        st.caption(
-            f"🔢 Tokens — إدخال: {usage.input_tokens:,} · "
-            f"إخراج: {usage.output_tokens:,} · "
-            f"إجمالي: {usage.input_tokens + usage.output_tokens:,}"
-        )
-    return raw_text, "claude-haiku-5-5"
+        usage_dict = {
+            "input": getattr(usage, "input_tokens", 0),
+            "output": getattr(usage, "output_tokens", 0),
+        }
+    return raw_text, "claude-haiku-5-5", usage_dict
 
 
 def ai_view(df, rows, kp):
@@ -2024,13 +1984,24 @@ def ai_view(df, rows, kp):
     sig = hashlib.md5(json.dumps([subj, sorted(chosen), sorted(sel["Timestamp"].tolist())]).encode()).hexdigest()
     store_key = f"{kp}_report"
     wait = AI_COOLDOWN - (time.time() - st.session_state.get("_ai_last", 0))
+    # ===== راديو اختيار النموذج (Premium فقط) =====
+    current_name = st.session_state.user["name"]
+    chosen_model = "groq"
+    if is_premium(current_name) and "ANTHROPIC_API_KEY" in st.secrets:
+        chosen_model = st.radio(
+            "النموذج",
+            ["groq", "claude"],
+            format_func=lambda x: "Groq (سريع)" if x == "groq" else "Claude Haiku 5.5 (أدق)",
+            horizontal=True,
+            key=f"{kp}_model",
+        )
+
     if st.button("🤖 توليد التقرير", type="primary", use_container_width=True, key=f"{kp}_gen"):
         if wait > 0:
             st.warning(f"انتظر {int(wait) + 1} ثانية قبل طلب تقرير جديد.")
         else:
             allr = pd.DataFrame(all_results())
             peers = {}
-            current_name = st.session_state.user["name"]
             if not allr.empty:
                 allr["Percentage"] = allr["Percentage"].apply(_safe_pct)
                 a = allr[(allr["Subject"].astype(str) == subj) & (allr["Name"].astype(str) != current_name)]
@@ -2047,15 +2018,17 @@ def ai_view(df, rows, kp):
             with st.spinner("جارٍ تحليل أدائك…"):
                 try:
                     facts_text = AI_USER_TMPL.format(facts=facts)
-                    if is_premium(current_name) and "ANTHROPIC_API_KEY" in st.secrets:
+                    usage = None
+                    if chosen_model == "claude":
                         try:
-                            text, model = claude_generate_report(AI_SYSTEM_PROMPT, facts_text)
+                            text, model, usage = claude_generate_report(AI_SYSTEM_PROMPT, facts_text)
                         except Exception:
                             text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
                     else:
                         text, model = groq_generate(AI_SYSTEM_PROMPT, facts_text)
                     st.session_state[store_key] = {"text": text, "model": model, "sig": sig,
-                                                    "scope": scope_text, "facts": facts}
+                                                    "scope": scope_text, "facts": facts,
+                                                    "usage": usage}
                     st.session_state["_ai_last"] = time.time()
                 except Exception as e:
                     st.error(friendly_ai_error(e))
@@ -2068,7 +2041,15 @@ def ai_view(df, rows, kp):
             st.caption("⚠ هذا التقرير لنطاق سابق. اضغط «توليد التقرير» لتحديثه.")
         with box():
             st.markdown(rep["text"])
-        st.caption(f"{rep['scope']} · النموذج: {rep['model']} · تقرير آلي.")
+        st.caption(f"{rep['scope']} · تقرير آلي.")
+        # توكنز التقارير — للمشرف فقط
+        if rep.get("usage") and is_premium(st.session_state.user["name"]):
+            u = rep["usage"]
+            st.caption(
+                f"🔢 Tokens — إدخال: {u['input']:,} · إخراج: {u['output']:,} · "
+                f"إجمالي: {u['input'] + u['output']:,}"
+            )
+                   
         c1, c2 = st.columns(2)
         c1.download_button("⬇ حفظ التقرير", rep["text"].encode("utf-8"), "hiht_report.md",
                            "text/markdown", key=f"{kp}_dl", use_container_width=True)
@@ -2081,8 +2062,7 @@ def ai_page(df):
     user = st.session_state.user
     st.subheader("🤖 التحليل الذكي")
     st.caption("اختر النطاق وعدد الاختبارات، وسيكتب لك الذكاء الاصطناعي تقريرًا موجزًا.")
-    if is_premium(user["name"]):
-        st.success("⭐ أنت مستخدم Premium — سيُستخدم Claude Haiku 5.5 لتقاريرك.")
+
     ai_view(df, my_rows(user["name"]), "me_ai")
 
 
@@ -2321,8 +2301,8 @@ def account_view(df):
 
 # ====================== لوحة المشرف ======================
 def admin_view(df):
-    t_over, t_users, t_materials, t_csv, t_img, t_cleanup = st.tabs(
-        ["📈 نظرة عامة", "👥 المستخدمون", "📚 إدارة المواد", "📄 استيراد CSV/Excel", "🖼️ الصور", "🧹 حذف النتائج"])
+    t_over, t_users, t_materials, t_csv, t_img, t_cleanup, t_settings = st.tabs(
+        ["📈 نظرة عامة", "👥 المستخدمون", "📚 إدارة المواد", "📄 استيراد CSV/Excel", "🖼️ الصور", "🧹 حذف النتائج", "⚙️ الإعدادات"])
     allr = pd.DataFrame(all_results())
     if not allr.empty:
         allr["Percentage"] = allr["Percentage"].apply(_safe_pct)
@@ -2616,6 +2596,10 @@ def admin_view(df):
             del_asset("logo")
             st.rerun()
 
+def short_mode():
+    """يرجع 'premium' أو 'public' — افتراضي 'premium'."""
+    return safe_assets().get("short_mode", "premium")
+           
         st.divider()
         st.subheader("صور المواد")
         all_subject_names = sorted(set(df["Subject"].unique()).union(str(r.get("Subject", "")) for r in load_materials()), key=nat_key)
@@ -2635,7 +2619,31 @@ def admin_view(df):
         if d2.button("حذف الصورة", disabled=key not in assets, use_container_width=True):
             del_asset(key)
             st.rerun()
+    with t_settings:
+        st.subheader("⚙️ إعدادات الميزات")
+        st.caption("تحكم بحالة الميزات دون تعديل الكود. يُحفظ فوراً في Google Sheets.")
 
+        st.markdown("### 📝 Short Answers")
+        current_short = short_mode()
+        short_choice = st.radio(
+            "حالة Short Answers",
+            ["premium", "public"],
+            index=0 if current_short == "premium" else 1,
+            format_func=lambda x: (
+                "🔒 Premium فقط — قيد التجربة (الطلاب يرون رسالة)" if x == "premium"
+                else "🌐 متاح للجميع (الطلاب يستخدمونه)"
+            ),
+            key="short_mode_radio",
+        )
+        if short_choice != current_short:
+            try:
+                set_asset("short_mode", short_choice)
+                st.success("✅ تم التحديث. سيُطبَّق فوراً.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"تعذر الحفظ: {e}")
+
+        st.caption("💡 عند Premium: أنت فقط تستطيع فتح Short. الطلاب يرون رسالة توفّر قريب.")
 
 # ====================== التشغيل ======================
 try:
