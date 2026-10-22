@@ -2298,7 +2298,14 @@ def account_view(df):
             st.session_state.clear()
             st.rerun()
 
+def short_mode():
+    """يرجع 'premium' أو 'public' — افتراضي 'premium'."""
+    return safe_assets().get("short_mode", "premium")
 
+
+def admin_view(df):
+    t_over, t_users, t_materials, t_csv, t_img, t_cleanup, t_settings = st.tabs(
+               
 # ====================== لوحة المشرف ======================
 def admin_view(df):
     t_over, t_users, t_materials, t_csv, t_img, t_cleanup, t_settings = st.tabs(
@@ -2595,10 +2602,6 @@ def admin_view(df):
         if c2.button("حذف الشعار", disabled="logo" not in assets, use_container_width=True):
             del_asset("logo")
             st.rerun()
-
-def short_mode():
-    """يرجع 'premium' أو 'public' — افتراضي 'premium'."""
-    return safe_assets().get("short_mode", "premium")
            
         st.divider()
         st.subheader("صور المواد")
