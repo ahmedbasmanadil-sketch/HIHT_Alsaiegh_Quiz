@@ -988,16 +988,7 @@ def subject_view(df):
     sub_df = df[df["Subject"] == subj]
     c1, c2 = pick(subj, PALETTE)
     back_button("المواد", "home")
-    img = safe_assets().get(f"subj:{subj}")
-    bg = f"background-image:linear-gradient(135deg,{c1},{c2});"
-    cover_img = f'<img class="cover-img" src="{img}" alt="غلاف {esc(subj)}">' if img else ""
-    cover_class = "cover cover-full" if img else "cover"
-    st.markdown(
-        f'<div class="{cover_class}" style="{bg}">{cover_img}<div class="cover-t">'
-        f'{"" if img else pick(subj, EMOJIS) + " "}{esc(subj)}</div>'
-        f'<div class="cover-m">{sub_df["Lecture"].nunique()} محاضرات · {len(sub_df)} سؤال</div></div>',
-        unsafe_allow_html=True,
-    )
+           
     if sub_df.empty:
         st.info("أُضيفت هذه المادة، لكن لا توجد أسئلة لها بعد.")
         return
