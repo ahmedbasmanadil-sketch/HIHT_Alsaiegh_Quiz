@@ -1716,11 +1716,20 @@ def confidence_label(n):
 
 
 def parse_answers(raw):
+    """يقرأ إجابات MCQ (len=2) وShort (len=3) معاً."""
     try:
         d = json.loads(raw)
-        return {k: v for k, v in d.items() if isinstance(v, (list, tuple)) and len(v) == 2}
     except Exception:
-        return {}
+        return {"mcq": {}, "short": {}}
+    mcq, short = {}, {}
+    for k, v in d.items():
+        if not isinstance(v, (list, tuple)):
+            continue
+        if len(v) == 2:
+            mcq[k] = v  # [chosen, correct]
+        elif len(v) == 3:
+            short[k] = v  # [student_text, score, status]
+    return {"mcq": mcq, "short": short}
 
 
 def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
@@ -1730,12 +1739,17 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     log, blanks, answered_total = {}, 0, 0
     attempt_lines = []
     for i, row in sel.iterrows():
-        ans = parse_answers(row["Answers"])
-        b = sum(1 for v in ans.values() if not v[0])
+        parsed = parse_answers(row["Answers"])
+        mcq_ans = parsed["mcq"]
+        short_ans = parsed["short"]
+        b = sum(1 for v in mcq_ans.values() if not v[0])
+        b += sum(1 for v in short_ans.values() if not v[0])
         blanks += b
-        answered_total += len(ans)
-        for qid, (chosen, correct) in ans.items():
+        answered_total += len(mcq_ans) + len(short_ans)
+        for qid, (chosen, correct) in mcq_ans.items():
             log.setdefault(qid, []).append((chosen, correct))
+        for qid, (student, score, status) in short_ans.items():
+            log.setdefault(qid, []).append(("__short__", score, status))
         attempt_lines.append(f"#{i + 1} | {str(row['Timestamp'])[:10]} | {row['Lecture']} | "
                              f"{float(row['Score']):g}/{float(row['Total']):g} | {_safe_pct(row['Percentage']):g}% | بدون إجابة: {b}")
 
@@ -1752,15 +1766,39 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     for qid, hist in log.items():
         if qid not in qmap:
             continue
-        wrong = [c for c, k in hist if c != k]
-        if not wrong:
-            continue
-        last_ok = hist[-1][0] == hist[-1][1]
-        if not last_ok:
-            status = "متكرر" if len(wrong) >= 2 else ("تراجع" if len(hist) >= 2 else "حديث")
+        row_q = qmap[qid]
+        is_short = row_q.get("Type", "MCQ") == "Short"
+        if is_short:
+            # hist entries are ("__short__", score, status)
+            short_hist = [h for h in hist if h[0] == "__short__"]
+            if not short_hist:
+                continue
+            max_p = float(row_q.get("MaxPoints", 10) or 10)
+            wrong_count = 0
+            for _, score, status in short_hist:
+                if status == "skipped":
+                    continue
+                if status == "empty" or float(score) < max_p * 0.5:
+                    wrong_count += 1
+            if wrong_count == 0:
+                continue
+            last_score = float(short_hist[-1][1])
+            last_ok = last_score >= max_p * 0.7
+            status_word = ("متكرر" if wrong_count >= 2 else
+                          ("تراجع" if len(short_hist) >= 2 and not last_ok else "حديث"))
+            if last_ok:
+                status_word = "مصحَّح"
+            items.append((qid, hist, [None] * wrong_count, status_word))
         else:
-            status = "مصحَّح"
-        items.append((qid, hist, wrong, status))
+            wrong = [c for c, k in hist if c != k]
+            if not wrong:
+                continue
+            last_ok = hist[-1][0] == hist[-1][1]
+            if not last_ok:
+                status = "متكرر" if len(wrong) >= 2 else ("تراجع" if len(hist) >= 2 else "حديث")
+            else:
+                status = "مصحَّح"
+            items.append((qid, hist, wrong, status))
     items.sort(key=lambda t: (_STATUS_ORDER[t[3]], -len(t[2]), -len(t[1])))
     corrected = [t for t in items if t[3] == "مصحَّح"][:3]
     others = [t for t in items if t[3] != "مصحَّح"]
@@ -1770,18 +1808,29 @@ def build_ai_facts(sel, qmap, peers, bank_total, scope_text, max_q=16):
     q_lines = []
     for qid, hist, wrong, status in shown:
         r = qmap[qid]
-        letters = Counter(c for c in wrong if c)
-        opts = " | ".join(f"{L}) {_clip(r.get('Option' + L, ''), 70)}" for L in LETTERS
-                          if str(r.get("Option" + L, "")).strip())
-        line = (f"[{status}] {r.get('Lecture', '')} — أخطأ {len(wrong)} من {len(hist)} محاولات\n"
-                f"  السؤال: {_clip(r['Question'], 220)}\n  الخيارات: {opts}\n  الصحيح: {r['Correct']}")
-        if letters:
-            top, cnt = letters.most_common(1)[0]
-            line += f"\n  الخيار الخاطئ الأكثر تكرارًا: {top} («{_clip(r.get('Option' + top, ''), 70)}») × {cnt}"
-        blank_n = sum(1 for c in wrong if not c)
-        if blank_n:
-            line += f"\n  تُرك بلا إجابة {blank_n} مرة"
-        q_lines.append(line)
+        is_short = r.get("Type", "MCQ") == "Short"
+        if is_short:
+            max_p = float(r.get("MaxPoints", 10) or 10)
+            short_hist = [h for h in hist if h[0] == "__short__"]
+            scores = [(float(s), st) for _, s, st in short_hist if st != "skipped"]
+            line = (f"[{status}] {r.get('Lecture', '')} — Short Answer\n"
+                    f"  السؤال: {_clip(r['Question'], 220)}\n"
+                    f"  الإجابة النموذجية: {_clip(r.get('ModelAnswer', ''), 300)}\n"
+                    f"  درجاتك: {', '.join(f'{s:g}/{max_p:g}' for s, _ in scores)}")
+            q_lines.append(line)
+        else:
+            letters = Counter(c for c in wrong if c)
+            opts = " | ".join(f"{L}) {_clip(r.get('Option' + L, ''), 70)}" for L in LETTERS
+                              if str(r.get("Option" + L, "")).strip())
+            line = (f"[{status}] {r.get('Lecture', '')} — أخطأ {len(wrong)} من {len(hist)} محاولات\n"
+                    f"  السؤال: {_clip(r['Question'], 220)}\n  الخيارات: {opts}\n  الصحيح: {r['Correct']}")
+            if letters:
+                top, cnt = letters.most_common(1)[0]
+                line += f"\n  الخيار الخاطئ الأكثر تكراراً: {top} («{_clip(r.get('Option' + top, ''), 70)}») × {cnt}"
+            blank_n = sum(1 for c in wrong if not c)
+            if blank_n:
+                line += f"\n  تُرك بلا إجابة {blank_n} مرة"
+            q_lines.append(line)
 
     seen = len(log)
     blank_pct = (blanks / answered_total * 100) if answered_total else 0
