@@ -1005,7 +1005,7 @@ def subject_view(df):
     if not mcq_all.empty:
         with box():
             st.markdown(
-                card("🎲", "#2d3436", "#636e72", "اختبار شامل MCQ",
+                card("🎲", "#2d3436", "#636e72", "اختبار شامل",
                      f"أسئلة عشوائية من كل المحاضرات · {len(mcq_all)} سؤال"),
                 unsafe_allow_html=True,
             )
